@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      padding: 40px;
+      background-color:rgb(245, 245, 245);
+    }
+
+    .custom-btn {
+      background-color:rgb(38, 200, 138);
+      color: white;
+      padding: 10px 20px;
+      border: white;
+      border-radius: 15px;
+      font-size: 14px;
+      font-family: inherit;
+      font-style: normal; 
+      font-weight: normal;
+      text-decoration: none;
+      transition: 0.2s ease;
+      margin-bottom: 20px;
+      cursor: pointer; 
+      display: block;
+    }
+
+    .custom-btn:hover {
+      background-color:rgb(38, 159, 200);
+    }
+
+    .list-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; 
+    gap: 15px;
+  }
+  </style>
+</head>
+<body>
+  <h1>Your Notes</h1>
+  <div class="list-container">
+    {% if latest_notes_list %}
+      <ul>
+        {% for note in latest_notes_list %}
+          <a href="{% url 'notes:edit' note.id %}" class="custom-btn">
+            <b>{{ note.title }}</b> - {{ note.modified|date:"F j, Y \\a\\t g:i a" }}
+          </a>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    <ul>
+      <a href="{% url 'notes:create' %}" class="custom-btn"><i>+ New Note</i></a>
+      <a href="{% url 'login' %}" class="custom-btn"><b>Sign Out</b></a>
+    </ul>
+  </div>
+</body>
+</html>
+

@@ -1,0 +1,382 @@
+{% load widget_tweaks %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background-color:rgb(245, 245, 245);
+    }
+
+    .custom-btn {
+      background-color: rgb(38, 200, 138);
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 15px;
+      font-size: 14px;
+      font-family: inherit;
+      text-decoration: none;
+      display: block;
+      transition: 0.2s ease;
+      cursor: pointer;
+    }
+
+    .custom-btn:hover {
+      background-color: rgb(38, 159, 200);
+    }
+
+    .editor-wrapper {
+      width: 100%;
+      max-width: 700px;
+      margin: 10px;
+    }
+
+    .editor-toolbar {
+      justify-content: center;
+      display: flex;
+      gap: 10px;
+      resize: vertical; 
+    }
+
+    .editor-toolbar button {
+      justify-content: center;
+      padding: 6px 7px;
+      background-color: inherit;
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .editor-toolbar button:hover {
+      background-color: rgba(191, 191, 191, 0.74);
+      border-radius: 10px;
+      border: none;
+    }
+
+    .editor-toolbar button.active {
+      background-color: rgba(191, 191, 191, 0.43);
+      border-color: #888;
+      border-radius: 10px;
+      border: none;
+    }
+
+    #editor {
+      border: none;
+      border-radius: 4px;
+      padding: 12px;
+      font-size: 16px;
+      background-color: #fff;
+      outline: none;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+
+    .custom-titlearea {
+      border: none;
+      box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.1);
+      padding: 6px;
+      border-radius: 8px;
+      font-size: 16px;
+      background-color:rgba(253, 253, 253, 0.63);
+      resize: vertical;
+    }
+
+    .custom-textarea { 
+      border: none;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+      padding: 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 16px;
+      background-color:rgba(253, 253, 253, 0.9);
+      width: 80vw;
+      min-height: 20vh;
+      resize: vertical; 
+    }
+
+    .form-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .message {
+      background-color: #d4edda;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #c3e6cb;
+      border-radius: 5px;
+      color: #155724;
+    }
+  </style>
+</head>
+<body>
+  {# ─── FLASH MESSAGES ─── #}
+  {% if messages %}
+    {% for message in messages %}
+      <div id="success-message" class="message" role="alert">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {# ─── MAIN NOTE FORM ─── #}
+  <form method="post">
+    {% csrf_token %}
+    {% render_field form.title placeholder="Your Title" class+="form-control custom-titlearea" %}
+
+    <div class="editor-wrapper">
+      {# ─── WYSIWYG TOOLBAR ─── #}
+      <div class="editor-toolbar">
+        <button title="Bold" type="button" data-command="bold" onclick="event.preventDefault(); formatText('bold');"><b>B</b></button>
+        <button title="Italic" type="button" data-command="italic" onclick="event.preventDefault(); formatText('italic');"><i>I</i></button>
+        <button title="Underline" type="button" data-command="underline" onclick="event.preventDefault(); formatText('underline');"><u>U</u></button>
+        <button title="Bullet Point" type="button" data-command="insertUnorderedList" onclick="formatText('UnorderedList')">•</button>
+        <button title="Number List" type="button" data-command="insertOrderedList" onclick="formatText('OrderedList')">1.</button>
+        {% comment %} <select title="Dropdown" id="myDropdown" name="mySelection">
+            <option value="option1_value">Option 1 Display Text</option>
+            <option value="option2_value">Option 2 Display Text</option>
+            <option value="option3_value" onclick="formatText('insertOrderedList')">Option 3 Display Text</option>
+        </select>{% endcomment %}
+      </div> 
+
+      {# ─── NORMAL TEXT (HIDDEN) ─── #}
+      <div style="display: none;">
+        {% render_field form.text id="id_text_hidden" %}
+      </div>
+
+      
+
+      <!-- WYSIWYG TEXT EDITOR (VISIBLE) -->
+      <div id="editor" class="form-control custom-textarea" contenteditable="true">
+        {{ form.text.value|safe }}
+      </div>
+
+      {% comment %} {% render_field form.text placeholder="Your Text" class+="form-control custom-textarea" %} {% endcomment %}
+      
+    </div>
+
+    {# ─── SAVE BUTTON ─── #}
+    <button type="submit" class="custom-btn">Save</button>
+
+  </form>
+
+  {# ─── BACK AND DELETE BUTTONS ─── #}
+  <div class="form-controls">
+    <form action="{% url 'notes:home' %}" method="get">
+      <button type="submit" class="custom-btn">Back</button>
+    </form>
+  </div>
+  <div class="form-controls">
+    <form action="{% url 'notes:delete' note_id %}" method="post" onsubmit="return confirm('Are you sure?');">
+      {% csrf_token %}
+      <button type="submit" class="custom-btn">Delete</button>
+    </form>
+  </div>
+
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const editor = document.getElementById("editor");
+      const form = document.querySelector("form");
+      const hiddenField = document.getElementById("id_text_hidden");
+      const commands = ['bold', 'italic', 'underline', 'insertUnorderedList', 'insertOrderedList'];
+
+      function formatText(command) {
+
+        // Format selected text using 'command' parameter (ie: bold, italics, underline)
+        document.execCommand(command, false, null);
+
+        // Update look of buttons (ie: active or inactive)
+        updateButtonStates();
+
+        // Ensure user can continue typing in editor when a button is pressed
+        editor.focus();
+      }
+
+      
+
+      function updateButtonStates() {
+
+        // Check the state of all buttons (active or inactive)
+        for(i = 0; i < commands.length; i++){
+          const button = document.querySelector(`button[data-command="${commands[i]}"]`);
+
+          // Switch button to active or inactive view when clicked depending on current state
+          if (document.queryCommandState(commands[i])) {
+            button.classList.add('active');
+          } else {
+            button.classList.remove('active');
+          }
+        }
+      }
+
+      document.addEventListener("selectionchange", () => {
+        
+        // Only check if selection is within editor
+        if (document.activeElement === editor || editor.contains(window.getSelection().anchorNode)) {
+          updateButtonStates();
+        }
+      });
+
+      // Saves text content to hidden field when user saves changes
+      form.addEventListener("submit", function () {
+        hiddenField.value = editor.innerHTML;
+      });
+
+      // Update buttons for keyboard shortcuts (ie: Ctrl + B)
+      editor.addEventListener("keydown", function (e) {
+        const key = e.key.toLowerCase();
+
+        if ((e.ctrlKey || e.metaKey) && ['b', 'i', 'u'].includes(key)) {
+
+          // Let the browser apply formatting, then update state
+          setTimeout(updateButtonStates, 0);
+        }
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+          e.preventDefault();
+
+          hiddenField.value = editor.innerHTML; // Copy content
+          form.submit(); // Now safe to submit
+        }
+      });
+
+      setTimeout(function () {
+        const message = document.getElementById("success-message");
+        if (message) {
+          message.style.transition = "opacity 0.5s ease";
+          message.style.opacity = "0";
+          setTimeout(() => message.remove(), 500);
+        }
+      }, 2000);
+
+    window.formatText = formatText;
+  });
+  function autoResizeEditor() {
+    // Temporarily reset height to measure scrollHeight
+    editor.style.height = 'auto';
+
+    // Then set to scrollHeight
+    editor.style.height = editor.scrollHeight + "px";
+  }
+
+  // Trigger resize on input
+  editor.addEventListener("input", autoResizeEditor);
+
+  // Trigger on page load
+  autoResizeEditor();
+  </script>
+</body>
+</html>
+
+{# ─── WORK IN PROGESS ─── #}
+{% comment %} function formatText(command){
+  // Selection object:
+  const selection = window.getSelection();
+
+  // Selection range of highlighted text:
+  const range = selection.getRangeAt(0);
+  
+  var htmlWrap;
+  switch (command) {
+    case 'bold':
+      htmlWrap = document.createElement('b');
+      break;
+    case 'italic':
+      htmlWrap = document.createElement('i');
+      break;
+    case 'underline':
+      htmlWrap = document.createElement('u');
+      break;
+    case 'insertUnorderedList':
+      insertList('ul');
+      return;
+    case 'insertOrderedList':
+      insertList('ol');
+      return;
+    default:
+      return;
+  }
+
+  // Put content inside html wrapper
+  htmlWrap.appendChild(range.extractContents());
+
+  // Put wrapped content back into DOM
+  range.insertNode(htmlWrap);
+
+  // Ensure user is no longer selecting text
+  selection.removeAllRanges();
+  selection.addRange(range);
+
+  updateButtonStates();
+  editor.focus();
+
+}
+
+function updateButtonStates() {
+  const selection = window.getSelection();
+
+  if (!selection.rangeCount) return;
+
+  // Get element where selection starts
+  var element = selection.anchorNode;
+
+  // If it is a text node, move up to its parent
+  if (element.nodeType === 3) {
+    element = element.parentElement;
+  }
+
+  const htmlDict = {
+    bold: 'B',
+    italic: 'I',
+    underline: 'U',
+  };
+
+  for (const command in htmlDict) {
+    // Find button in toolbar
+    const button = document.querySelector(`button[data-command="${command}"]`);
+    if (button) {
+      const isActive = htmlDict[command].some(tag => 
+        element.closest(tag)
+      );
+      button.classList.toggle('active', isActive);
+    }
+}
+
+function insertList(type) {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+
+  const range = selection.getRangeAt(0);
+  const selectedText = range.toString();
+
+  const lines = selectedText.split('\n');
+  const list = document.createElement(type);
+
+  lines.forEach(line => {
+    const li = document.createElement('li');
+    li.textContent = line;
+    list.appendChild(li);
+  });
+
+  try {
+    range.deleteContents();
+    range.insertNode(list);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  } catch (err) {
+    console.error('Cannot insert list:', err);
+  }
+
+  editor.focus();
+} {% endcomment %}
